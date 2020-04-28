@@ -1,0 +1,29 @@
+[package]
+name = "aliddns"
+version = "1.0.0"
+authors = ["Scallop Ye <yescallop@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+curl = { version = "0.4", default-features = false }
+json = "0.12"
+urlencoding = "1"
+hmac-sha1 = "0.1"
+time = "0.2"
+base64 = "0.12"
+toml = "0.5"
+serde = { version = "1", features = ["derive"] }
+libc = "0.2"
+anyhow = "1"
+log = "0.4"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["iphlpapi"] }
+windows-service = { git = "https://github.com/mullvad/windows-service-rs" }
+
+[patch.crates-io]
+winapi = { git = "https://github.com/retep998/winapi-rs", branch = "0.3" }
+
+[profile.release]
+lto = true
+panic = "abort"

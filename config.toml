@@ -1,0 +1,19 @@
+interval_secs = 60
+# Uncomment the line below to enable IPv6 support.
+# Currently on Windows, aliddns-rs would use temporary
+# IPv6 address of the first network adapter.
+#
+# ipv6 = true
+
+# Acquire your own access key and fill it below.
+# See: https://ram.console.aliyun.com/ (Preferred)
+#      https://usercenter.console.aliyun.com/
+access_key_id = "yourown"
+access_key_secret = "yourown"
+# Record ID can be found by viewing the source code of
+# Aliyun DNS Resolution Settings page. It is located in
+# the attribute "data-row-key" of the label "tr", at the
+# row of the record.
+# See: https://dns.console.aliyun.com/
+record_id = 233
+rr = "@"

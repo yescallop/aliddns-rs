@@ -20,11 +20,13 @@ mod win {
         ifdef::IfOperStatusUp, ipifcons::IF_TYPE_SOFTWARE_LOOPBACK, nldef::IpSuffixOriginRandom,
         ws2def::AF_UNSPEC,
     };
+    use winapi::um::heapapi::*;
     use winapi::um::iphlpapi;
     use winapi::um::iptypes::*;
 
     pub fn list() -> io::Result<Vec<Interface>> {
-        let mut adapt_addrs_ptr = get_ip_adapter_addrs()?;
+        let ifaddrs = get_ifaddrs()?;
+        let mut adapt_addrs_ptr = ifaddrs.as_ptr();
         let mut res = Vec::new();
 
         while !adapt_addrs_ptr.is_null() {
@@ -60,16 +62,16 @@ mod win {
             adapt_addrs_ptr = adapt_addrs.Next;
         }
 
-        unsafe { libc::free(adapt_addrs_ptr as *mut _) };
         Ok(res)
     }
 
-    fn get_ip_adapter_addrs() -> io::Result<*const IP_ADAPTER_ADDRESSES> {
+    fn get_ifaddrs() -> io::Result<IfAddrs> {
         let mut buffer_size = 15000;
         let mut addrs: *mut IP_ADAPTER_ADDRESSES;
         loop {
             unsafe {
-                addrs = libc::malloc(buffer_size as usize) as *mut _;
+                let heap = GetProcessHeap();
+                addrs = HeapAlloc(heap, 0, buffer_size as usize) as *mut _;
                 if addrs.is_null() {
                     panic!("unable to allocate buffer for GetAdaptersAddresses");
                 }
@@ -89,17 +91,35 @@ mod win {
                     0 => break,
                     // ERROR_BUFFER_OVERFLOW
                     111 => {
-                        libc::free(addrs as *mut _);
+                        HeapFree(heap, 0, addrs as *mut _);
                         continue;
                     }
                     _ => {
-                        libc::free(addrs as *mut _);
+                        HeapFree(heap, 0, addrs as *mut _);
                         return Err(io::Error::last_os_error());
                     }
                 }
             }
         }
-        Ok(addrs)
+        Ok(IfAddrs { inner: addrs })
+    }
+
+    struct IfAddrs {
+        inner: *const IP_ADAPTER_ADDRESSES,
+    }
+
+    impl IfAddrs {
+        pub const fn as_ptr(&self) -> *const IP_ADAPTER_ADDRESSES {
+            self.inner
+        }
+    }
+
+    impl Drop for IfAddrs {
+        fn drop(&mut self) {
+            unsafe {
+                HeapFree(GetProcessHeap(), 0, self.inner as *mut _);
+            }
+        }
     }
 }
 

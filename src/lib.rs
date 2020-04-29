@@ -1,10 +1,10 @@
 use anyhow::{anyhow, Context, Result};
+use chrono::{SecondsFormat, Utc};
 use curl::easy::Easy;
 use hmacsha1::hmac_sha1;
 use serde::Deserialize;
 use std::net::IpAddr;
 use std::time::Duration;
-use time::OffsetDateTime;
 use urlencoding::encode as urlencode;
 
 const API_VERSION: &str = "2015-01-09";
@@ -29,9 +29,9 @@ pub struct Config {
 }
 
 pub fn update(config: &Config, value: &IpAddr) -> Result<()> {
-    let now = OffsetDateTime::now_utc();
-    let signature_nonce = now.timestamp();
-    let timestamp = now.format("%FT%TZ");
+    let now = Utc::now();
+    let signature_nonce = now.timestamp_millis();
+    let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true);
     let r#type = match value {
         IpAddr::V4(_) => "A",
         IpAddr::V6(_) => "AAAA",
@@ -68,12 +68,12 @@ pub fn update(config: &Config, value: &IpAddr) -> Result<()> {
 pub fn get_ip_v4() -> Result<IpAddr> {
     let resp = http_get(API_GET_IP_V4)?;
     let str = unsafe { std::str::from_utf8_unchecked(&resp[..resp.len() - 1]) };
-    Ok(IpAddr::V4(str.parse().unwrap()))
+    Ok(IpAddr::V4(str.parse()?))
 }
 
 fn parse_response(resp: &[u8]) -> Result<()> {
     let str = unsafe { std::str::from_utf8_unchecked(resp) };
-    let mut json = json::parse(str).unwrap();
+    let mut json = json::parse(str)?;
     if let Some(msg) = json["Message"].take_string() {
         Err(anyhow!("Aliyun API error: {}", msg))
     } else {

@@ -1,5 +1,6 @@
 use aliddns::{get_ip_v4, ifaddrs, Config};
 use anyhow::{Context, Result};
+use chrono::Local;
 use log::*;
 use std::env;
 use std::ffi::OsString;
@@ -8,7 +9,6 @@ use std::io::Write;
 use std::net::IpAddr;
 use std::sync::mpsc::{self, Receiver};
 use std::time::Duration;
-use time::OffsetDateTime;
 use windows_service::{
     define_windows_service,
     service::{
@@ -31,7 +31,7 @@ impl log::Log for Logger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            let now = OffsetDateTime::now_local().format("%F %T");
+            let now = Local::now().format("%F %T");
             // We assure that there's always only one thread mutating LOG_FILE
             match unsafe { LOG_FILE.as_mut() } {
                 Some(file) => {

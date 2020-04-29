@@ -9,16 +9,15 @@ curl = { version = "0.4", default-features = false }
 json = "0.12"
 urlencoding = "1"
 hmac-sha1 = "0.1"
-time = "0.2"
+chrono = "0.4"
 base64 = "0.12"
 toml = "0.5"
 serde = { version = "1", features = ["derive"] }
-libc = "0.2"
 anyhow = "1"
 log = "0.4"
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["iphlpapi"] }
+winapi = { version = "0.3", features = ["heapapi", "iphlpapi"] }
 windows-service = { git = "https://github.com/mullvad/windows-service-rs" }
 
 [patch.crates-io]

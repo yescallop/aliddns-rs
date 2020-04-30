@@ -12,7 +12,7 @@ const SIGNATURE_METHOD: &str = "HMAC-SHA1";
 const SIGNATURE_VERSION: &str = "1.0";
 const ACTION: &str = "UpdateDomainRecord";
 const API_GET_IP_V4: &str = "http://members.3322.org/dyndns/getip";
-const CURL_TIMEOUT: Duration = Duration::from_secs(1);
+const CURL_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub mod ifaddrs;
 mod sockaddr;

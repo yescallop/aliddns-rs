@@ -18,7 +18,7 @@ log = "0.4"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["heapapi", "iphlpapi"] }
-windows-service = { git = "https://github.com/mullvad/windows-service-rs" }
+windows-service = "0.3"
 
 [patch.crates-io]
 winapi = { git = "https://github.com/retep998/winapi-rs", branch = "0.3" }

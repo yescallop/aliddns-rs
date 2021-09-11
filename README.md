@@ -2,11 +2,17 @@
 aliddns-rs is a Rust program providing DDNS service through [Aliyun Open API](https://www.aliyun.com/product/openapiexplorer), running as console program or **Windows service**.
 
 ## Usage
-Modify `config.toml` as instructed in the file, put the executable in the same directory, and then run it.
+Extract the release into an individual directory, modify `config.toml` as instructed in the file, and then run the executable.
 
-If it works, you could follow the instruction below to register it as a Windows service.
+If it works, you can follow the instructions below to register it as a Windows service.
 
 ## Windows Service Setup
+
+### Automatic Setup
+
+Run `manage_service.bat` as administrator and follow the instructions.
+
+### Manual Setup
 
 Run the command below as administrator to register the service.
 
@@ -16,4 +22,4 @@ And then start the service.
 
 `sc start AliDDNS`
 
-Check `log.txt` in the directory of executable, there should be log output in it.
+Check `log.txt` in the directory of executable. There should be log output in it.

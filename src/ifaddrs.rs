@@ -24,7 +24,7 @@ mod win {
     use winapi::um::iphlpapi;
     use winapi::um::iptypes::*;
 
-    pub fn list() -> io::Result<Vec<Interface>> {
+    pub fn list(static_v6: bool) -> io::Result<Vec<Interface>> {
         let ifaddrs = get_ifaddrs()?;
         let mut adapt_addrs_ptr = ifaddrs.as_ptr();
         let mut res = Vec::new();
@@ -48,8 +48,8 @@ mod win {
             while !addr_ptr.is_null() {
                 let addr = unsafe { &*addr_ptr };
                 if let Some(ip_addr) = to_ipaddr(addr.Address.lpSockaddr) {
-                    // Random IPv6 address is preferred.
-                    if addr.SuffixOrigin == IpSuffixOriginRandom {
+                    // Random IPv6 address is preferred by default.
+                    if !static_v6 && addr.SuffixOrigin == IpSuffixOriginRandom {
                         addrs.insert(0, ip_addr)
                     } else {
                         addrs.push(ip_addr);

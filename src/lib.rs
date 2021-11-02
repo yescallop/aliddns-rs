@@ -3,15 +3,14 @@ use chrono::{SecondsFormat, Utc};
 use curl::easy::Easy;
 use hmacsha1::hmac_sha1;
 use serde::Deserialize;
-use std::net::IpAddr;
-use std::time::Duration;
+use std::{net::IpAddr, time::Duration};
 use urlencoding::encode as urlencode;
 
 const API_VERSION: &str = "2015-01-09";
 const SIGNATURE_METHOD: &str = "HMAC-SHA1";
 const SIGNATURE_VERSION: &str = "1.0";
 const ACTION: &str = "UpdateDomainRecord";
-const API_GET_IP_V4: &str = "http://members.3322.org/dyndns/getip";
+const API_GLOBAL_V4: &str = "http://api-ipv4.ip.sb/ip";
 const CURL_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub mod ifaddrs;
@@ -20,15 +19,18 @@ mod sockaddr;
 #[derive(Deserialize)]
 pub struct Config {
     pub interval_secs: u64,
-    #[serde(default)]
-    pub ipv6: bool,
     pub access_key_id: String,
     pub access_key_secret: String,
-    pub record_id: u64,
+    pub record_id_v4: Option<u64>,
+    pub record_id_v6: Option<u64>,
+    #[serde(default)]
+    pub global_v4: bool,
+    #[serde(default)]
+    pub static_v6: bool,
     pub rr: String,
 }
 
-pub fn update(config: &Config, value: &IpAddr) -> Result<()> {
+pub fn update_record(config: &Config, value: &IpAddr, id: u64) -> Result<()> {
     let now = Utc::now();
     let signature_nonce = now.timestamp_millis();
     let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true);
@@ -42,7 +44,7 @@ pub fn update(config: &Config, value: &IpAddr) -> Result<()> {
         config.access_key_id,
         ACTION,
         urlencode(&config.rr),
-        config.record_id,
+        id,
         SIGNATURE_METHOD,
         signature_nonce,
         SIGNATURE_VERSION,
@@ -62,16 +64,16 @@ pub fn update(config: &Config, value: &IpAddr) -> Result<()> {
     url.insert_str(0, "http://alidns.aliyuncs.com/?");
 
     let resp = http_get(&url)?;
-    Ok(parse_response(&resp)?)
+    Ok(process_resp(&resp)?)
 }
 
-pub fn get_ip_v4() -> Result<IpAddr> {
-    let resp = http_get(API_GET_IP_V4)?;
-    let str = unsafe { std::str::from_utf8_unchecked(&resp[..resp.len() - 1]) };
-    Ok(IpAddr::V4(str.parse()?))
+pub fn get_global_v4() -> Result<IpAddr> {
+    let resp = http_get(API_GLOBAL_V4)?;
+    let text = String::from_utf8(resp)?;
+    Ok(IpAddr::V4(text.trim_end().parse()?))
 }
 
-fn parse_response(resp: &[u8]) -> Result<()> {
+fn process_resp(resp: &[u8]) -> Result<()> {
     let str = unsafe { std::str::from_utf8_unchecked(resp) };
     let mut json = json::parse(str)?;
     if let Some(msg) = json["Message"].take_string() {
@@ -97,7 +99,7 @@ fn http_get(url: &str) -> Result<Vec<u8>> {
         })
         .unwrap();
     transfer.perform().context("HTTP request failed")?;
-    std::mem::drop(transfer);
+    drop(transfer);
 
     Ok(buf)
 }

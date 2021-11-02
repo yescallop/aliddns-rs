@@ -2,7 +2,7 @@
 authors = ["Scallop Ye <yescallop@gmail.com>"]
 edition = "2018"
 name = "aliddns"
-version = "1.0.0"
+version = "1.1.0"
 
 [dependencies]
 anyhow = "1"

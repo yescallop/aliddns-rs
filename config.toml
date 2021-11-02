@@ -1,9 +1,4 @@
 interval_secs = 60
-# Uncomment the line below to enable IPv6 support.
-# Currently on Windows, aliddns-rs would use temporary
-# IPv6 address of the first network adapter.
-#
-# ipv6 = true
 
 # Acquire your own access key and fill it below.
 # See: https://ram.console.aliyun.com/ (Preferred)
@@ -15,5 +10,15 @@ access_key_secret = "yourown"
 # the attribute "data-row-key" of the label "tr", at the
 # row of the record.
 # See: https://dns.console.aliyun.com/
-record_id = 233
+record_id_v4 = 233
+# Uncomment the line below to enable IPv6 support.
+# record_id_v6 = 234
 rr = "@"
+
+# Uncomment the line below to use global IPv4 address.
+# global_v4 = true
+
+# Uncomment the line below to use static IPv6 address on Windows.
+# Currently on Windows, aliddns-rs would use temporary
+# IPv6 address of the first network adapter by default.
+# static_v6 = true

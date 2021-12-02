@@ -1,10 +1,10 @@
-use aliddns::{get_global_v4, ifaddrs, Config};
+use aliddns::{get_global_v4, ifaddrs, update_record, Config};
 use anyhow::{ensure, Context, Result};
 use chrono::Local;
 use log::*;
 use std::{
     env,
-    ffi::OsString,
+    ffi::{CString, OsString},
     fmt::Write,
     fs::File,
     io::Write as IoWrite,
@@ -158,8 +158,10 @@ fn run(shutdown_rx: Option<Receiver<()>>) -> Result<()> {
 
     let interval = Duration::from_secs(config.interval_secs);
 
+    let mut last_if_name: Option<CString> = None;
+
     loop {
-        match update(&config) {
+        match update(&config, &mut last_if_name) {
             Ok(addr) if !addr.is_empty() => info!("Update: {}", addr),
             Err(e) => warn!("{:?}", e),
             _ => (),
@@ -179,42 +181,67 @@ fn run(shutdown_rx: Option<Receiver<()>>) -> Result<()> {
     Ok(())
 }
 
-fn update(config: &Config) -> Result<String> {
-    let ifs = ifaddrs::list(config.static_v6).context("Unable to list interface")?;
-    let interface = ifs.get(0).context("No interface is available")?;
+fn update(config: &Config, last_if_name: &mut Option<CString>) -> Result<String> {
+    let mut ifs = ifaddrs::list(config.static_v6).context("Unable to list interface")?;
+    ensure!(!ifs.is_empty(), "No interface is available");
+
+    let (i, updated) = last_if_name
+        .as_ref()
+        .and_then(|name| ifs.iter().position(|i| i.name == *name))
+        .zip(Some(false))
+        .unwrap_or((0, true));
+    let interface = ifs.swap_remove(i);
+
+    if updated {
+        if last_if_name.is_none() {
+            info!("Selecting interface: {}", interface.desc);
+        } else {
+            warn!("Switching interface: {}", interface.desc);
+        }
+        *last_if_name = Some(interface.name);
+    }
+
     let mut msg = String::new();
+
     if let Some(id) = config.record_id_v6 {
-        let addr = interface
+        let res = interface
             .addrs
             .iter()
+            .copied()
             .find(|addr| addr.is_ipv6())
-            .context("No IPv6 address is available")?;
-        if let Err(e) = aliddns::update_record(config, &addr, id) {
-            warn!("{:?}", e);
-        } else {
-            write!(msg, "{}", addr)?;
+            .context("No IPv6 address is available")
+            .and_then(|addr| update_record(config, addr, id).map(|_| addr));
+
+        match res {
+            Ok(addr) => write!(msg, "{}", addr)?,
+            Err(e) => warn!("{:?}", e),
         }
     }
+
     if let Some(id) = config.record_id_v4 {
-        let global;
         let addr = if config.global_v4 {
-            global = get_global_v4().context("Unable to get global IPv4 address")?;
-            &global
+            get_global_v4().context("Unable to get global IPv4 address")
         } else {
             interface
                 .addrs
                 .iter()
+                .copied()
                 .find(|addr| addr.is_ipv4())
-                .context("No IPv4 address is available")?
+                .context("No IPv4 address is available")
         };
-        if let Err(e) = aliddns::update_record(config, addr, id) {
-            warn!("{:?}", e);
-        } else if !msg.is_empty() {
-            write!(msg, ", {}", addr)?;
-        } else {
-            write!(msg, "{}", addr)?;
+
+        let res = addr.and_then(|addr| update_record(config, addr, id).map(|_| addr));
+
+        match res {
+            Ok(addr) => {
+                if !msg.is_empty() {
+                    write!(msg, ", ")?;
+                }
+                write!(msg, "{}", addr)?;
+            }
+            Err(e) => warn!("{:?}", e),
         }
-    };
+    }
 
     Ok(msg)
 }

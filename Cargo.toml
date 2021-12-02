@@ -1,8 +1,8 @@
 [package]
 authors = ["Scallop Ye <yescallop@gmail.com>"]
-edition = "2018"
+edition = "2021"
 name = "aliddns"
-version = "1.1.0"
+version = "1.1.1"
 
 [dependencies]
 anyhow = "1"

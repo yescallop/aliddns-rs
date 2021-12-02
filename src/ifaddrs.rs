@@ -1,3 +1,4 @@
+use std::ffi::CString;
 use std::net::IpAddr;
 
 #[cfg(not(windows))]
@@ -5,8 +6,10 @@ pub use posix::list;
 #[cfg(windows)]
 pub use win::list;
 
+#[derive(Debug)]
 pub struct Interface {
-    pub name: String,
+    pub desc: String,
+    pub name: CString,
     pub addrs: Vec<IpAddr>,
 }
 
@@ -14,10 +17,16 @@ pub struct Interface {
 mod win {
     use super::Interface;
     use crate::sockaddr::to_ipaddr;
-    use std::ffi::CStr;
-    use std::io;
+
+    use std::{
+        ffi::{CStr, OsString},
+        io,
+        os::windows::prelude::OsStringExt,
+    };
     use winapi::shared::{
-        ifdef::IfOperStatusUp, ipifcons::IF_TYPE_SOFTWARE_LOOPBACK, nldef::IpSuffixOriginRandom,
+        ifdef::IfOperStatusUp,
+        ipifcons::{IF_TYPE_ETHERNET_CSMACD, IF_TYPE_IEEE80211},
+        nldef::IpSuffixOriginRandom,
         ws2def::AF_UNSPEC,
     };
     use winapi::um::heapapi::*;
@@ -25,22 +34,31 @@ mod win {
     use winapi::um::iptypes::*;
 
     pub fn list(static_v6: bool) -> io::Result<Vec<Interface>> {
-        let ifaddrs = get_ifaddrs()?;
-        let mut adapt_addrs_ptr = ifaddrs.as_ptr();
+        let mut adapt_addrs_ptr = get_adapter_addresses()?;
         let mut res = Vec::new();
 
         while !adapt_addrs_ptr.is_null() {
             let adapt_addrs = unsafe { &*adapt_addrs_ptr };
             if adapt_addrs.OperStatus != IfOperStatusUp
-                || adapt_addrs.IfType == IF_TYPE_SOFTWARE_LOOPBACK
+                || !matches!(
+                    adapt_addrs.IfType,
+                    IF_TYPE_ETHERNET_CSMACD | IF_TYPE_IEEE80211
+                )
             {
                 adapt_addrs_ptr = adapt_addrs.Next;
                 continue;
             }
 
-            let name = unsafe { CStr::from_ptr(adapt_addrs.AdapterName) }
-                .to_string_lossy()
-                .into_owned();
+            let desc = unsafe { os_string_from_ptr(adapt_addrs.Description) }
+                .into_string()
+                .unwrap_or_else(|s| s.to_string_lossy().into_owned());
+            if desc.contains("Virtual") {
+                // Skip potentially virtual adapters.
+                adapt_addrs_ptr = adapt_addrs.Next;
+                continue;
+            }
+
+            let name = unsafe { CStr::from_ptr(adapt_addrs.AdapterName) }.to_owned();
 
             let mut addr_ptr = adapt_addrs.FirstUnicastAddress;
             let mut addrs = Vec::new();
@@ -58,14 +76,24 @@ mod win {
                 addr_ptr = addr.Next;
             }
 
-            res.push(Interface { name, addrs });
+            res.push(Interface { desc, name, addrs });
             adapt_addrs_ptr = adapt_addrs.Next;
+        }
+
+        unsafe {
+            HeapFree(GetProcessHeap(), 0, adapt_addrs_ptr as *mut _);
         }
 
         Ok(res)
     }
 
-    fn get_ifaddrs() -> io::Result<IfAddrs> {
+    unsafe fn os_string_from_ptr(ptr: *mut u16) -> OsString {
+        let len = (0..).take_while(|&i| *ptr.add(i) != 0).count();
+        let slice = std::slice::from_raw_parts(ptr, len);
+        OsString::from_wide(slice)
+    }
+
+    fn get_adapter_addresses() -> io::Result<*mut IP_ADAPTER_ADDRESSES> {
         let mut buffer_size = 15000;
         let mut addrs: *mut IP_ADAPTER_ADDRESSES;
         loop {
@@ -101,31 +129,13 @@ mod win {
                 }
             }
         }
-        Ok(IfAddrs { inner: addrs })
-    }
-
-    struct IfAddrs {
-        inner: *const IP_ADAPTER_ADDRESSES,
-    }
-
-    impl IfAddrs {
-        pub const fn as_ptr(&self) -> *const IP_ADAPTER_ADDRESSES {
-            self.inner
-        }
-    }
-
-    impl Drop for IfAddrs {
-        fn drop(&mut self) {
-            unsafe {
-                HeapFree(GetProcessHeap(), 0, self.inner as *mut _);
-            }
-        }
+        Ok(addrs)
     }
 }
 
 #[cfg(not(windows))]
 mod posix {
-    pub fn list() -> ! {
+    pub fn list(_static_v6: bool) -> ! {
         todo!()
     }
 }

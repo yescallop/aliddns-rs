@@ -30,7 +30,7 @@ pub struct Config {
     pub rr: String,
 }
 
-pub fn update_record(config: &Config, value: &IpAddr, id: u64) -> Result<()> {
+pub fn update_record(config: &Config, value: IpAddr, id: u64) -> Result<()> {
     let now = Utc::now();
     let signature_nonce = now.timestamp_millis();
     let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true);

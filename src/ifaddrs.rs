@@ -23,15 +23,11 @@ mod win {
         io,
         os::windows::prelude::OsStringExt,
     };
-    use winapi::shared::{
-        ifdef::IfOperStatusUp,
-        ipifcons::{IF_TYPE_ETHERNET_CSMACD, IF_TYPE_IEEE80211},
-        nldef::IpSuffixOriginRandom,
-        ws2def::AF_UNSPEC,
+    use windows_sys::Win32::{
+        NetworkManagement::IpHelper::*,
+        Networking::WinSock::{IpSuffixOriginRandom, AF_UNSPEC},
+        System::Memory::{GetProcessHeap, HeapAlloc, HeapFree},
     };
-    use winapi::um::heapapi::*;
-    use winapi::um::iphlpapi;
-    use winapi::um::iptypes::*;
 
     pub fn list(static_v6: bool) -> io::Result<Vec<Interface>> {
         let mut adapt_addrs_ptr = get_adapter_addresses()?;
@@ -58,7 +54,7 @@ mod win {
                 continue;
             }
 
-            let name = unsafe { CStr::from_ptr(adapt_addrs.AdapterName) }.to_owned();
+            let name = unsafe { CStr::from_ptr(adapt_addrs.AdapterName as _) }.to_owned();
 
             let mut addr_ptr = adapt_addrs.FirstUnicastAddress;
             let mut addrs = Vec::new();
@@ -93,9 +89,9 @@ mod win {
         OsString::from_wide(slice)
     }
 
-    fn get_adapter_addresses() -> io::Result<*mut IP_ADAPTER_ADDRESSES> {
+    fn get_adapter_addresses() -> io::Result<*mut IP_ADAPTER_ADDRESSES_LH> {
         let mut buffer_size = 15000;
-        let mut addrs: *mut IP_ADAPTER_ADDRESSES;
+        let mut addrs: *mut IP_ADAPTER_ADDRESSES_LH;
         loop {
             unsafe {
                 let heap = GetProcessHeap();
@@ -103,7 +99,7 @@ mod win {
                 if addrs.is_null() {
                     panic!("unable to allocate buffer for GetAdaptersAddresses");
                 }
-                let ret = iphlpapi::GetAdaptersAddresses(
+                let ret = GetAdaptersAddresses(
                     AF_UNSPEC as u32,
                     GAA_FLAG_SKIP_ANYCAST
                         | GAA_FLAG_SKIP_MULTICAST

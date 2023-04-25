@@ -24,7 +24,7 @@ mod win {
         os::windows::prelude::OsStringExt,
     };
     use windows_sys::Win32::{
-        NetworkManagement::IpHelper::*,
+        NetworkManagement::{IpHelper::*, Ndis::IfOperStatusUp},
         Networking::WinSock::{IpSuffixOriginRandom, AF_UNSPEC},
         System::Memory::{GetProcessHeap, HeapAlloc, HeapFree},
     };

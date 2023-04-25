@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use base64::prelude::*;
 use chrono::{SecondsFormat, Utc};
 use curl::easy::Easy;
 use hmacsha1::hmac_sha1;
@@ -56,7 +57,7 @@ pub fn update_record(config: &Config, value: IpAddr, id: u64) -> Result<()> {
     let to_sign = format!("GET&%2F&{}", urlencode(&query));
     let mut key = config.access_key_secret.to_string().into_bytes();
     key.push(b'&');
-    let signature = base64::encode(hmac_sha1(&key, to_sign.as_bytes()));
+    let signature = BASE64_STANDARD.encode(hmac_sha1(&key, to_sign.as_bytes()));
     query.push_str("&Signature=");
     query.push_str(&urlencode(&signature));
 

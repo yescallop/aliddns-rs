@@ -3,6 +3,7 @@ use base64::prelude::*;
 use chrono::{SecondsFormat, Utc};
 use curl::easy::Easy;
 use hmacsha1::hmac_sha1;
+use log::*;
 use serde::Deserialize;
 use std::{net::IpAddr, time::Duration};
 use urlencoding::encode as urlencode;
@@ -12,6 +13,13 @@ const SIGNATURE_METHOD: &str = "HMAC-SHA1";
 const SIGNATURE_VERSION: &str = "1.0";
 const ACTION: &str = "UpdateDomainRecord";
 const API_GLOBAL_V4: &str = "http://api-ipv4.ip.sb/ip";
+const APIS_GLOBAL_V6: [&'static str; 5] = [
+    "http://v6.ipv6-test.com/api/myip.php",
+    "http://bbs6.ustc.edu.cn/cgi-bin/myip",
+    "http://ipv6.ident.me",
+    "http://ipv6.icanhazip.com",
+    "http://ipv6.yunohost.org",
+];
 const CURL_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub mod ifaddrs;
@@ -26,6 +34,8 @@ pub struct Config {
     pub record_id_v6: Option<u64>,
     #[serde(default)]
     pub global_v4: bool,
+    #[serde(default)]
+    pub global_v6: bool,
     #[serde(default)]
     pub static_v6: bool,
     pub rr: String,
@@ -72,6 +82,17 @@ pub fn get_global_v4() -> Result<IpAddr> {
     let resp = http_get(API_GLOBAL_V4)?;
     let text = String::from_utf8(resp)?;
     Ok(IpAddr::V4(text.trim_end().parse()?))
+}
+
+pub fn get_global_v6() -> Result<IpAddr> {
+    for api in APIS_GLOBAL_V6 {
+        if let Ok(resp) = http_get(api) {
+            let text = String::from_utf8(resp)?;
+            return Ok(IpAddr::V6(text.trim_end().parse()?));
+        }
+    }
+
+    Err(anyhow!("Get global IPv6 address failed"))
 }
 
 fn process_resp(resp: &[u8]) -> Result<()> {

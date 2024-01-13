@@ -3,7 +3,6 @@ use base64::prelude::*;
 use chrono::{SecondsFormat, Utc};
 use curl::easy::Easy;
 use hmacsha1::hmac_sha1;
-use log::*;
 use serde::Deserialize;
 use std::{net::IpAddr, time::Duration};
 use urlencoding::encode as urlencode;
@@ -12,7 +11,28 @@ const API_VERSION: &str = "2015-01-09";
 const SIGNATURE_METHOD: &str = "HMAC-SHA1";
 const SIGNATURE_VERSION: &str = "1.0";
 const ACTION: &str = "UpdateDomainRecord";
-const API_GLOBAL_V4: &str = "http://api-ipv4.ip.sb/ip";
+// adopt from https://github.com/OpenIoTHub/aliddns/blob/0b3a93644030e1917f34ab76d4cbc279f090653c/utils/utils.go#L18
+const APIS_GLOBAL_V4: [&'static str; 19] = [
+    "http://api-ipv4.ip.sb/ip",
+    "http://whatismyip.akamai.com",
+    "http://v4.ipv6-test.com/api/myip.php",
+    "http://checkip.amazonaws.com",
+    "api.ipify.org",
+    "canhazip.com",
+    "ident.me",
+    "whatismyip.akamai.com",
+    "myip.dnsomatic.com",
+    "http://members.3322.org/dyndns/getip",
+    "http://ifconfig.me/ip",
+    "http://ip.3322.net",
+    "https://myexternalip.com/raw",
+    "http://ipv4.ident.me",
+    "http://ipv4.icanhazip.com",
+    "http://nsupdate.info/myip",
+    "http://ipv4.myip.dk/api/info/IPv4Address",
+    "http://checkip4.spdyn.de",
+    "http://ipinfo.io/ip",
+];
 const APIS_GLOBAL_V6: [&'static str; 5] = [
     "http://v6.ipv6-test.com/api/myip.php",
     "http://bbs6.ustc.edu.cn/cgi-bin/myip",
@@ -79,9 +99,14 @@ pub fn update_record(config: &Config, value: IpAddr, id: u64) -> Result<()> {
 }
 
 pub fn get_global_v4() -> Result<IpAddr> {
-    let resp = http_get(API_GLOBAL_V4)?;
-    let text = String::from_utf8(resp)?;
-    Ok(IpAddr::V4(text.trim_end().parse()?))
+    for api in APIS_GLOBAL_V4 {
+        if let Ok(resp) = http_get(api) {
+            let text = String::from_utf8(resp)?;
+            return Ok(IpAddr::V4(text.trim_end().parse()?));
+        }
+    }
+
+    Err(anyhow!("Get global IPv6 address failed"))
 }
 
 pub fn get_global_v6() -> Result<IpAddr> {

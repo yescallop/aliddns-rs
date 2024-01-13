@@ -17,6 +17,8 @@ rr = "@"
 
 # Uncomment the line below to use global IPv4 address.
 # global_v4 = true
+# Uncomment the line below to use global IPv6 address.
+# global_v6 = true
 
 # Uncomment the line below to use static IPv6 address on Windows.
 # Currently on Windows, aliddns-rs would use temporary

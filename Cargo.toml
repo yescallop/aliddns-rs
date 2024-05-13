@@ -6,21 +6,21 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1"
-base64 = "0.21"
+base64 = "0.22"
 chrono = "0.4"
 curl = { version = "0.4", default-features = false }
-hmac-sha1 = "0.1"
+hmac-sha1 = "0.2"
 json = "0.12"
 log = "0.4"
 serde = { version = "1", features = ["derive"] }
-toml = "0.7"
+toml = "0.8"
 urlencoding = "2"
 
 [target.'cfg(windows)'.dependencies]
-windows-service = "0.6"
+windows-service = "0.7"
 
 [target.'cfg(windows)'.dependencies.windows-sys]
-version = "0.48"
+version = "0.52"
 features = [
     "Win32_Foundation",
     "Win32_NetworkManagement_IpHelper",

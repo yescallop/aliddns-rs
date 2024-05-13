@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context, Result};
 use base64::prelude::*;
 use chrono::{SecondsFormat, Utc};
 use curl::easy::Easy;
-use hmacsha1::hmac_sha1;
+use hmac_sha1::hmac_sha1;
 use serde::Deserialize;
 use std::{net::IpAddr, time::Duration};
 use urlencoding::encode as urlencode;

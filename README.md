@@ -18,7 +18,7 @@ Run `manage_service.bat` as administrator and follow the instructions.
 
 Run the command below as administrator to register the service.
 
-`sc create AliDDNS binPath="C:\path\to\aliddns.exe -srv" start= auto obj= "NT AUTHORITY\LocalService" password= ""`
+`sc create AliDDNS binPath="C:\path\to\aliddns.exe -srv" start=auto`
 
 And then start the service.
 

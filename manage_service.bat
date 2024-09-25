@@ -9,7 +9,7 @@ pause
 exit
 
 :create
-sc create AliDDNS binPath= "%~dp0aliddns.exe -srv" start= auto obj= "NT AUTHORITY\LocalService" password= ""
+sc create AliDDNS binPath="%~dp0aliddns.exe -srv" start=auto
 echo Press any key to start the service.
 pause>nul
 sc start AliDDNS

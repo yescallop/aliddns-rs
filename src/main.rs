@@ -1,4 +1,4 @@
-use aliddns::{get_global_v4, ifaddrs, update_record, Config};
+use aliddns::{get_global_v4, get_global_v6, ifaddrs, update_record, Config};
 use anyhow::{ensure, Context, Result};
 use chrono::Local;
 use log::*;
@@ -204,16 +204,30 @@ fn update(config: &Config, last_if_name: &mut Option<CString>) -> Result<String>
     let mut msg = String::new();
 
     if let Some(id) = config.record_id_v6 {
-        let res = interface
-            .addrs
-            .iter()
-            .copied()
-            .find(|addr| addr.is_ipv6())
-            .context("No IPv6 address is available")
-            .and_then(|addr| update_record(config, addr, id).map(|_| addr));
+        let addr = if config.global_v6 {
+            get_global_v6().context("Unable to get global IPv6 address")
+        } else {
+            interface
+                .addrs
+                .iter()
+                .copied()
+                .find(|addr| addr.is_ipv6())
+                .context("No IPv6 address is available")
+        };
+
+        if let Ok(add) = addr {
+            info!("Get IPv6 address {}", add);
+        }
+
+        let res = addr.and_then(|addr| update_record(config, addr, id).map(|_| addr));
 
         match res {
-            Ok(addr) => write!(msg, "{}", addr)?,
+            Ok(addr) => {
+                if !msg.is_empty() {
+                    write!(msg, ", ")?;
+                }
+                write!(msg, "{}", addr)?;
+            }
             Err(e) => warn!("{:?}", e),
         }
     }
@@ -229,6 +243,10 @@ fn update(config: &Config, last_if_name: &mut Option<CString>) -> Result<String>
                 .find(|addr| addr.is_ipv4())
                 .context("No IPv4 address is available")
         };
+
+        if let Ok(add) = addr {
+            info!("Get IPv4 address {}", add);
+        }
 
         let res = addr.and_then(|addr| update_record(config, addr, id).map(|_| addr));
 
